@@ -36,7 +36,7 @@ def build_messages(
     else:
         raise ValueError(f"Invalid audio_or_transcript: {audio_or_transcript}")
     return [
-        {"role": "system", "content": system_prompt},
+        # {"role": "system", "content": system_prompt},
         {"role": "user", "content": content},
     ]
 
