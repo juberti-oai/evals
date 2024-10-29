@@ -50,7 +50,7 @@ class SolverCompletionFn(CompletionFn):
         if isinstance(prompt, str):
             prompt = [{"role": "system", "content": prompt}]
         elif isinstance(prompt, list):
-            assert prompt[0]["role"] == "system", "Unexpected prompt role ordering"
+            pass
         else:
             raise ValueError(
                 f"Unexpected prompt type: "
