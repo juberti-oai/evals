@@ -3,6 +3,7 @@ import copy
 import io
 import os
 from dataclasses import asdict, dataclass
+import re
 from typing import Any, Dict, Union
 
 import google.api_core.exceptions
@@ -83,7 +84,8 @@ class GoogleMessage:
         )
         assert gmsg.role in valid_roles, f"Invalid role: {gmsg.role}"
         return gmsg
-
+    
+    
 
 class GeminiSolverWav(Solver):
     """
@@ -109,6 +111,12 @@ class GeminiSolverWav(Solver):
     @property
     def model(self) -> str:
         return self.model_name
+    
+    # Remove timestamp from the message
+    # Seems like Gemini is trained on ASR data with timestamp XX:XX before the translation
+    def _post_process(self, message):
+        # Remove timestamps in format XX:XX (e.g., 00:00, 01:12)
+        return re.sub(r'\d{2}:\d{2}', '', message).strip()
 
     def _solve(
         self,
@@ -132,6 +140,7 @@ class GeminiSolverWav(Solver):
                 },
             )
             print("Gen content resp text", gen_content_resp.text)
+            print("Post processed text", self._post_process(gen_content_resp.text))
             if gen_content_resp.prompt_feedback.block_reason:
                 # Blocked by safety filters
                 solver_result = SolverResult(
@@ -141,7 +150,7 @@ class GeminiSolverWav(Solver):
             else:
                 # Get text response
                 solver_result = SolverResult(
-                    gen_content_resp.text,
+                    self._post_process(gen_content_resp.text),
                     error=gen_content_resp.prompt_feedback,
                 )
         except (google.api_core.exceptions.GoogleAPIError,) as e:
