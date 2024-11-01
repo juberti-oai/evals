@@ -17,6 +17,7 @@ from typing import Any, Callable, Dict, List, Optional, TypeVar
 from evals.solvers.solver import Solver, SolverResult
 from evals.task_state import TaskState
 
+SAMPLE_RATE = 16000
 DEFAULT_MAX_BATCH_SIZE = 32
 
 class Qwen2AudioSolver(Solver):
@@ -72,7 +73,7 @@ class Qwen2AudioSolver(Solver):
         text_parts = []
         
         for part in content:
-            if part["type"] == "audio":
+            if part["type"] == "audio_url":
                 # Handle base64 encoded audio or URL
                 if isinstance(part["audio_url"], dict) and "url" in part["audio_url"]:
                     # Handle base64 encoded audio
@@ -84,19 +85,16 @@ class Qwen2AudioSolver(Solver):
                     
                 audio = librosa.load(audio_stream, sr=16000)[0]
                 audios.append(audio)
-                text_parts.append("<|audio|>")
             elif part["type"] == "text":
                 text_parts.append(part["text"])
-                
+            
         return audios, "".join(text_parts)
 
     def _solve(self, task_state: TaskState, **kwargs) -> SolverResult:
         inputs = {"conversation": [], "audios": []}
         
         # Process messages into conversation format
-        conversation = [
-            {"role": "system", "content": task_state.task_description},
-        ] + [msg.to_dict() for msg in task_state.messages]
+        conversation = [msg.to_dict() for msg in task_state.messages]
         
         # Process the last message if it contains audio
         if not isinstance(conversation[-1]["content"], str):
@@ -168,7 +166,8 @@ def solver_worker(inputs: List[Dict[str, Any]]) -> List[str]:
         text=batch_text,
         audios=batch_audios,
         return_tensors="pt",
-        padding=True
+        padding=True,
+        sampling_rate=SAMPLE_RATE
     )
     
     # Move to appropriate device
