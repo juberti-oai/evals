@@ -51,14 +51,6 @@ def _data_url_to_wav(url):
     _, raw_data = url.split(",", 1)
     return base64.b64decode(raw_data)
 
-def _wav_to_24k_pcm(wav_bytes):
-    audio, sr = librosa.load(io.BytesIO(wav_bytes), sr=24000, mono=True)
-    return (audio * 32767).astype(np.int16).tobytes()
-
-
-def _pcm_to_base64(pcm_bytes):
-    return base64.b64encode(pcm_bytes).decode("utf-8")
-
 
 # TODO: Could we just use google's own types?
 # e.g. google.generativeai.types.content_types.ContentType
@@ -170,11 +162,6 @@ class GeminiSolverWav(Solver):
             else:
                 raise e
 
-        # record_sampling(
-        #     prompt=msgs,
-        #     sampled=[solver_result.output],
-        #     model=self.model,
-        # )
         return solver_result
 
     @staticmethod
@@ -215,25 +202,9 @@ class GeminiSolverWav(Solver):
                 # Proceed as normal
                 std_msgs.append(msg)
 
-        """
-        Std msgs [GoogleMessage(role='user', parts=[{'type': 'text', 'text': 'You are a helpful assistant.
-        \nPlease translate the text to German. Your response should only include the German translation, 
-        without any additional words:\n\n'}, 
-        {'type': 'audio_url', 'audio_url': {'url': 'data:audio/x-wav;base64,Uk
-        """
-
-        """
-        Final msgs 
-        [GoogleMessage(role='user', parts=[{'type': 'text', 'text': 'You are a helpful assistant.
-        \nPlease translate the text to German. Your response should only include the German 
-        translation, without any additional words:\n\n'}, 
-        {'mime_type': 'audio/wav', 'data': 'AAAA...}}]"""
-
         final_messages = []
         std_msgs[-1].parts[1]["mime_type"] = "audio/wav"
         wav_bytes = _data_url_to_wav(std_msgs[-1].parts[1]["audio_url"]["url"])
-        # pcm_bytes = _wav_to_24k_pcm(wav_bytes)
-        # base64_pcm = _pcm_to_base64(pcm_bytes)
         std_msgs[-1].parts[1]["data"] = wav_bytes
         std_msgs[-1].parts[1].pop("audio_url")
         std_msgs[-1].parts[1].pop("type")
