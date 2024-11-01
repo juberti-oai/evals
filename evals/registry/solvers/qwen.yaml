@@ -1,7 +1,4 @@
 generation/gpu/qwen-audio-7b-instruct:
-  class: evals.solvers.providers.fixie.local_gpu_solver:FixieGPUSolver
+  class: evals.solvers.providers.qwen.qwen2audio_local_gpu_solver:Qwen2AudioLocalGPUSolver
   args:
-    model: Qwen/Qwen2-Audio-7B-Instruct
-    extra_options:
-      temperature: 0
-      max_new_tokens: 512
+    model_name: Qwen/Qwen2-Audio-7B-Instruct

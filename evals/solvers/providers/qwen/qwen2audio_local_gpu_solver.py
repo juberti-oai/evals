@@ -13,6 +13,7 @@ import librosa
 import transformers
 from urllib.request import urlopen
 from concurrent import futures
+from concurrent.futures import ProcessPoolExecutor
 from typing import Any, Callable, Dict, List, Optional, TypeVar
 from evals.solvers.solver import Solver, SolverResult
 from evals.task_state import TaskState
@@ -20,7 +21,7 @@ from evals.task_state import TaskState
 SAMPLE_RATE = 16000
 DEFAULT_MAX_BATCH_SIZE = 32
 
-class Qwen2AudioSolver(Solver):
+class Qwen2AudioLocalGPUSolver(Solver):
     """
     A solver class for running the Qwen2-Audio model in parallel across multiple GPUs.
     Uses BatchedProcessPoolExecutor for efficient batch processing.
@@ -48,8 +49,6 @@ class Qwen2AudioSolver(Solver):
         self.model_name = model_name
         if extra_options is None:
             extra_options = {}
-        if "max_length" not in extra_options:
-            extra_options["max_length"] = 256
 
         # Set up multiprocessing
         mp.set_start_method("spawn", force=True)
@@ -60,7 +59,7 @@ class Qwen2AudioSolver(Solver):
             max_workers=max(1, num_gpus),
             max_batch_size=int(max_batch_size),
             initializer=solver_initializer,
-            initargs=(rank_queue, num_gpus, model_name, extra_options),
+            initargs=(rank_queue, num_gpus, model_name),
             batch_worker_fn=solver_worker,
         )
 
@@ -72,23 +71,31 @@ class Qwen2AudioSolver(Solver):
         audios = []
         text_parts = []
         
-        for part in content:
+        for i, part in enumerate(content):
             if part["type"] == "audio_url":
-                # Handle base64 encoded audio or URL
                 if isinstance(part["audio_url"], dict) and "url" in part["audio_url"]:
-                    # Handle base64 encoded audio
                     audio_data = part["audio_url"]["url"].split(",")[1]
                     audio_stream = io.BytesIO(base64.b64decode(audio_data))
                 else:
-                    # Handle URL
                     audio_stream = io.BytesIO(urlopen(part["audio_url"]).read())
-                    
+                
                 audio = librosa.load(audio_stream, sr=16000)[0]
                 audios.append(audio)
+                
+                text_part = {
+                    "type": "audio",
+                    "audio_url": part["audio_url"]
+                }
+                text_parts.append(text_part)
+                
             elif part["type"] == "text":
-                text_parts.append(part["text"])
-            
-        return audios, "".join(text_parts)
+                text_part = {
+                    "type": "text", 
+                    "text": part["text"]
+                }
+                text_parts.append(text_part)
+        
+        return audios, text_parts
 
     def _solve(self, task_state: TaskState, **kwargs) -> SolverResult:
         inputs = {"conversation": [], "audios": []}
@@ -103,11 +110,10 @@ class Qwen2AudioSolver(Solver):
             conversation[-1]["content"] = text_content
             
         inputs["conversation"] = conversation
-
-        print("inputs", inputs)
         
         # Submit to executor and get result
         completion_output = self.executor.submit(inputs).result()
+        print("completion_output: \n", completion_output, "\n\n")
         return SolverResult(completion_output)
 
     def __del__(self):
@@ -119,7 +125,6 @@ def solver_initializer(
     rank_queue: mp.Queue,
     world_size: int,
     model_name: str,
-    extra_options: Dict[str, Any]
 ):
     """Initialize the model and processor on the specified GPU."""
     rank = rank_queue.get()
@@ -163,15 +168,14 @@ def solver_worker(inputs: List[Dict[str, Any]]) -> List[str]:
         batch_text.append(text)
         batch_audios.extend(input_item["audios"])
 
-    # Prepare inputs
     model_inputs = processor(
         text=batch_text,
         audios=batch_audios,
         return_tensors="pt",
         padding=True,
         sampling_rate=SAMPLE_RATE
-    )
-    
+    )    
+
     # Move to appropriate device
     model_inputs = {k: v.to(model.device) for k, v in model_inputs.items()}
     
@@ -179,7 +183,7 @@ def solver_worker(inputs: List[Dict[str, Any]]) -> List[str]:
     with torch.inference_mode():
         generate_ids = model.generate(
             **model_inputs,
-            **model._forward_params if hasattr(model, "_forward_params") else {}
+            max_length=512
         )
     
     # Process only the new tokens
@@ -219,7 +223,7 @@ class BatchedProcessPoolExecutor:
         self.batch_worker_fn = batch_worker_fn
         self._batch_queue = queue.Queue()
         self.available_workers = threading.Semaphore(value=max_workers + 1)
-        self.process_pool_executor = futures.process.ProcessPoolExecutor(
+        self.process_pool_executor = ProcessPoolExecutor(
             *args, max_workers=max_workers, **kwargs
         )
         self._batch_thread = threading.Thread(target=self.batch_requests)
