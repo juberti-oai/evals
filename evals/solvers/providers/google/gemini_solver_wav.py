@@ -123,9 +123,7 @@ class GeminiSolverWav(Solver):
         task_state: TaskState,
         **kwargs,
     ) -> SolverResult:
-        msgs = [
-            Message(role="user", content=task_state.task_description),
-        ] + task_state.messages
+        msgs = task_state.messages
         gmsgs = self._convert_msgs_to_google_format(msgs)
         try:
             glm_model = genai.GenerativeModel(model_name=self.model_name)
@@ -139,8 +137,7 @@ class GeminiSolverWav(Solver):
                     "safety_settings": SAFETY_SETTINGS,
                 },
             )
-            print("Gen content resp text", gen_content_resp.text)
-            print("Post processed text", self._post_process(gen_content_resp.text))
+            print("Gen content resp:", gen_content_resp.text)
             if gen_content_resp.prompt_feedback.block_reason:
                 # Blocked by safety filters
                 solver_result = SolverResult(
@@ -150,7 +147,7 @@ class GeminiSolverWav(Solver):
             else:
                 # Get text response
                 solver_result = SolverResult(
-                    self._post_process(gen_content_resp.text),
+                    gen_content_resp.text,
                     error=gen_content_resp.prompt_feedback,
                 )
         except (google.api_core.exceptions.GoogleAPIError,) as e:
