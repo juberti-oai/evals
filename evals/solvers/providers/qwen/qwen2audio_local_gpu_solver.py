@@ -103,6 +103,8 @@ class Qwen2AudioSolver(Solver):
             conversation[-1]["content"] = text_content
             
         inputs["conversation"] = conversation
+
+        print("inputs", inputs)
         
         # Submit to executor and get result
         completion_output = self.executor.submit(inputs).result()
