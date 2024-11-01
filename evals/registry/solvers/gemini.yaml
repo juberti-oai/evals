@@ -37,6 +37,12 @@ generation/direct/gemini-pro-flash-002-wav:
   args:
     model_name: gemini-1.5-flash-002
 
+
+generation/direct/gemini-pro-002-wav:
+  class: evals.solvers.providers.google.gemini_solver_wav:GeminiSolverWav
+  args:
+    model_name: gemini-1.5-pro-002
+
 generation/direct/gemini-pro-flash-8b-wav:
   class: evals.solvers.providers.google.gemini_solver_wav:GeminiSolverWav
   args:
