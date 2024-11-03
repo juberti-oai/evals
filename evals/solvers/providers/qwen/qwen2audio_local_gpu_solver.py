@@ -137,6 +137,7 @@ def solver_initializer(
     global processor, model
     
     processor = transformers.AutoProcessor.from_pretrained(model_name)
+    print("processor sampling rate: ", processor.feature_extractor.sampling_rate)
     model = transformers.Qwen2AudioForConditionalGeneration.from_pretrained(
         model_name,
         device_map="auto" if device.type == "cuda" else None,
@@ -183,7 +184,9 @@ def solver_worker(inputs: List[Dict[str, Any]]) -> List[str]:
     with torch.inference_mode():
         generate_ids = model.generate(
             **model_inputs,
-            max_length=512
+            max_length=256, 
+            do_sample=False,
+            min_new_tokens=1
         )
     
     # Process only the new tokens
