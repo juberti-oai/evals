@@ -37,7 +37,7 @@ class DivaLocalGPUSolver(Solver):
 
     def __init__(
         self,
-        model_name: str = "WillHeld/DiVA-llama-3-v0-8b",
+        model_name: str,
         num_gpus: int = torch.cuda.device_count(),
         max_batch_size: int = DEFAULT_MAX_BATCH_SIZE,
         extra_options: Optional[Dict[str, Any]] = None,
