@@ -97,6 +97,7 @@ class DivaLocalGPUSolver(Solver):
             
         # Submit to executor and get result
         completion_output = self.executor.submit(inputs).result()
+        print("completion_output: \n", completion_output, "\n\n")
         return SolverResult(completion_output)
 
     def __del__(self):
