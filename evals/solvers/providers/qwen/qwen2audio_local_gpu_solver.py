@@ -157,8 +157,6 @@ def solver_worker(inputs: List[Dict[str, Any]]) -> List[str]:
     """Process a batch of inputs using the model."""
     batch_text = []
     batch_audios = []
-    print("inputs1: \n", inputs, "\n\n")
-    print("inputs2: \n", inputs[0]["conversation"][-1], "\n\n")
 
     # Process each input in the batch
     for input_item in inputs:
@@ -171,7 +169,6 @@ def solver_worker(inputs: List[Dict[str, Any]]) -> List[str]:
         text = "<|audio_bos|><|AUDIO|><|audio_eos|>"+input_item["conversation"][-1]["content"][-1]["text"]+"<|en|>"
         batch_text.append(text)
         batch_audios.extend(input_item["audios"])
-    print("batch_text: \n", batch_text, "\n\n")
 
     model_inputs = processor(
         text=batch_text,
