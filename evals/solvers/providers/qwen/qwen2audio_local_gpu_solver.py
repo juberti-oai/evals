@@ -95,7 +95,7 @@ class Qwen2AudioLocalGPUSolver(Solver):
                 }
                 text_parts.append(text_part)
         
-        return audios, reversed(text_parts)
+        return audios, list(reversed(text_parts))
 
     def _solve(self, task_state: TaskState, **kwargs) -> SolverResult:
         inputs = {"conversation": [], "audios": []}
@@ -167,7 +167,6 @@ def solver_worker(inputs: List[Dict[str, Any]]) -> List[str]:
         )
         batch_text.append(text)
         batch_audios.extend(input_item["audios"])
-
 
     model_inputs = processor(
         text=batch_text,
