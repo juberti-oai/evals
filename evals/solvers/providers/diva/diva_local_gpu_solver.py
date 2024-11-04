@@ -113,20 +113,11 @@ def solver_initializer(
     """Initialize the model on the specified GPU."""
     rank = rank_queue.get()
 
-    if torch.cuda.is_available():
-        device = torch.device("cuda", rank)
-    else:
-        device = torch.device("cpu")
-
     global model
     model = transformers.AutoModel.from_pretrained(
         model_name,
-        device_map="auto" if device.type == "cuda" else None,
         trust_remote_code=True
     )
-
-    if device.type == "cpu":
-        model = model.to(device)
 
     if rank == 0:
         # Let other initializers start after model is downloaded
