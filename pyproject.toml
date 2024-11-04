@@ -52,6 +52,7 @@ dependencies = [
     "transformers[torch]",
     "peft",
     "librosa",
+    "openai-whisper @ git+https://github.com/openai/whisper.git",
 ]
 
 [project.urls]

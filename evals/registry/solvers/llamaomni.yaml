@@ -1,0 +1,4 @@
+generation/gpu/meta-llama-3-8b-instruct:
+  class: evals.solvers.providers.llamaomni.llamaomni_local_gpu_solver:LlamaOmniLocalGPUSolver
+  args:
+    model_path: Llama-3.1-8B-Omni
