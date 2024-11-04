@@ -161,12 +161,12 @@ def solver_worker(inputs: List[Dict[str, Any]]) -> List[str]:
     # Process each input in the batch
     for input_item in inputs:
         # Apply chat template to conversation
-        # text = processor.apply_chat_template(
-        #     input_item["conversation"],
-        #     add_generation_prompt=True,
-        #     tokenize=False
-        # )
-        text = "<|audio_bos|><|AUDIO|><|audio_eos|>"+input_item["conversation"][-1]["content"][-1]["text"]+"<|en|>"
+        text = processor.apply_chat_template(
+            input_item["conversation"],
+            add_generation_prompt=True,
+            tokenize=False
+        )
+        # text = "<|audio_bos|><|AUDIO|><|audio_eos|>"+input_item["conversation"][-1]["content"][-1]["text"]+"<|en|>"
         batch_text.append(text)
         batch_audios.extend(input_item["audios"])
 
