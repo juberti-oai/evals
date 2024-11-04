@@ -216,9 +216,8 @@ class Transcribe(MatchAudioTask):
 
 class Translate(MatchAudioTask):
     TASK_PROMPT = f"Please translate the text to {{language}}. Your response should only include the {{language}} translation, without any additional words:\n\n{AUDIO_PLACEHOLDER}"
-    # TASK_PROMPT = f"Please translate to {{language}}, without any additional words:\n\n{AUDIO_PLACEHOLDER}"
     # Qwen prompt 
-    TASK_PROMPT = f"Detect the language and translate the speech into {{language}}: {AUDIO_PLACEHOLDER}"
+    # TASK_PROMPT = f"Detect the language and translate the speech into {{language}}: {AUDIO_PLACEHOLDER}"
     def __init__(
         self,
         completion_fns: list[CompletionFn],
