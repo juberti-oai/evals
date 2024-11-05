@@ -66,12 +66,10 @@ class LlamaOmniReplicateSolver(Solver):
 
     def _process_audio_content(self, content: list) -> tuple[str, str]:
         """Process audio content from message parts."""
-        print("Processing audio content:", type(content))
         audio_uri = None
         prompt = None
         
         for part in content:
-            print("Processing part:", type(part))
             if isinstance(part, dict):  # Handle dict format
                 if part.get("type") == "audio_url":
                     audio_uri = part["audio_url"]["url"]
@@ -90,13 +88,11 @@ class LlamaOmniReplicateSolver(Solver):
         task_state: TaskState,
         **kwargs,
     ) -> SolverResult:
-        print("\nSolving task with last message:", type(task_state.messages[-1]))
         
         # Process the last message if it contains audio
         last_message = task_state.messages[-1]
         if hasattr(last_message, "content") and not isinstance(last_message.content, str):
             audio_uri, prompt = self._process_audio_content(last_message.content)
-            print("Extracted audio_uri:", audio_uri is not None, "prompt:", prompt is not None)
             if audio_uri is None:
                 return SolverResult("No audio content found", error="No audio content")
         else:

@@ -193,31 +193,30 @@ def solver_worker(inputs: List[Dict[str, Any]]) -> List[str]:
     # Process audio similarly to reference code
     speech_list = []
     for audio in batch_audios:
-        speech = whisper.pad_or_trim(audio.astype(np.float32))  # Ensure float32
+        # Convert to float32 at the very beginning
+        audio = audio.astype(np.float32)
+        speech = whisper.pad_or_trim(audio)
         mel = whisper.log_mel_spectrogram(speech, n_mels=128)
-        # Convert to float32 tensor and permute dimensions
-        speech_tensor = torch.from_numpy(mel.numpy()).float().permute(1, 0)
+        # Convert to tensor and ensure float32 dtype
+        speech_tensor = torch.tensor(mel.numpy(), dtype=torch.float32).permute(1, 0)
         speech_list.append(speech_tensor)
         
-    speech_lengths = [torch.LongTensor([audio.shape[0]]) for audio in batch_audios]
+    speech_lengths = [torch.tensor([audio.shape[0]], dtype=torch.long) for audio in batch_audios]
     
     input_ids = torch.stack(input_ids_list, dim=0)
     speech_tensors = torch.stack(speech_list, dim=0)
     speech_lengths = torch.stack(speech_lengths, dim=0)    
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = next(model.parameters()).device  # Get device from model
 
-    input_ids = input_ids.to(device=device, dtype=torch.long, non_blocking=True)
-    speech_tensors = speech_tensors.to(device=device, dtype=torch.float32, non_blocking=True)
-    speech_lengths = speech_lengths.to(device=device, dtype=torch.long, non_blocking=True)
+    # Move tensors to device and ensure correct dtypes
+    input_ids = input_ids.to(device=device, dtype=torch.long)
+    speech_tensors = speech_tensors.to(device=device, dtype=torch.float32)
+    speech_lengths = speech_lengths.to(device=device, dtype=torch.long)
+
+    # Ensure model parameters are float32
+    model.float()  # Convert all model parameters to float32
     
-    print("input_ids", input_ids)
-    print("speech_tensors", speech_tensors)
-    print("speech_lengths", speech_lengths)
-
-    print("input ids shape", input_ids.shape)
-    print("speech tensors shape", speech_tensors.shape)
-    print("speech lengths shape", speech_lengths.shape)
 
     # Generate responses using LlamaOmni's interface
     outputs = model.generate(
@@ -228,7 +227,7 @@ def solver_worker(inputs: List[Dict[str, Any]]) -> List[str]:
         temperature=0.7,
         top_p=0.9,
         num_beams=1,
-        max_new_tokens=256,
+        max_new_tokens=5,
         use_cache=True,
         pad_token_id=128004,
     )
