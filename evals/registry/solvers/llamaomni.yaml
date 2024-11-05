@@ -7,7 +7,10 @@ generation/gpu/llamaomni:
 generation/replicate/llamaomni:
   class: evals.solvers.providers.llamaomni.llamaomni_replicate_solver:LlamaOmniReplicateSolver
   args:
-    model_name: ictnlp/llama-omni
-    model_version: 36c9bcf70a56f40d9a27445c30c769308b18180296749f86ec9b682baf7ad351
-    generation_config: {}
+    deployment_owner: "lipatrick"
+    deployment_name: "llama-omni"
+    extra_options:
+      temperature: 0.7
+      top_p: 0.9
+      max_new_tokens: 256
   
