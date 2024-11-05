@@ -1,7 +1,8 @@
 import base64
+import copy
 import replicate
 import os
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional, List, Union
 from evals.solvers.solver import Solver, SolverResult
 from evals.task_state import TaskState
 
@@ -76,11 +77,41 @@ class LlamaOmniReplicateSolver(Solver):
             
             # Wait for prediction to complete
             prediction.wait()
-            print("prediction:", prediction)
             
-            return SolverResult(prediction.output)
+            # Extract text from output dictionary
+            if isinstance(prediction.output, dict) and 'text' in prediction.output:
+                result = prediction.output['text']
+            else:
+                result = str(prediction.output)
+                
+            print("output:", result)
+            return SolverResult(result)
         
         return SolverResult("")
+
+    @property
+    def name(self) -> str:
+        return f"replicate-{self.deployment_owner}-{self.deployment_name}"
+
+    @property
+    def model_version(self) -> Union[str, dict]:
+        return f"{self.deployment_owner}/{self.deployment_name}"
+
+    def __deepcopy__(self, memo):
+        """
+        Deepcopy everything except for self.deployment, which is instead shared across all copies
+        """
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        
+        for k, v in self.__dict__.items():
+            if k != "deployment":
+                setattr(result, k, copy.deepcopy(v, memo))
+        
+        # Share the deployment instance across copies
+        result.deployment = self.deployment
+        return result
 
 
         
