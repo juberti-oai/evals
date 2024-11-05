@@ -36,7 +36,9 @@ class LlamaOmniReplicateSolver(Solver):
             raise ValueError("Replicate API token must be provided either through api_token parameter or REPLICATE_API_TOKEN environment variable")
         
         self.extra_options = extra_options or {}
-        self.client = replicate.Client(api_token=self.api_token)
+        
+        # Get deployment directly
+        self.deployment = replicate.deployments.get(f"{deployment_owner}/{deployment_name}")
 
     def _process_audio_content(self, content: list) -> tuple[str, str]:
         """Process audio content from message parts."""
@@ -60,34 +62,25 @@ class LlamaOmniReplicateSolver(Solver):
             if not audio_data:
                 raise ValueError("No audio data found in the message")
 
+            # Create input dictionary with all parameters
+            input_data = {
+                "input_audio": audio_data,
+                "prompt": prompt or "",
+                **self.extra_options
+            }
+
             # Create prediction using deployment
-            prediction = self.client.deployments.predictions.create(
-                self.deployment_owner,
-                self.deployment_name,
-                input={
-                    "input_audio": audio_data,
-                    "prompt": prompt or "",
-                    **self.extra_options
-                }
+            prediction = self.deployment.predictions.create(
+                input=input_data
             )
             
             # Wait for prediction to complete
-            prediction = self.client.wait(prediction)
+            prediction.wait()
             print("prediction:", prediction)
             
             return SolverResult(prediction.output)
         
         return SolverResult("")
-
-    def copy(self):
-        return LlamaOmniReplicateSolver(
-            deployment_owner=self.deployment_owner,
-            deployment_name=self.deployment_name,
-            api_token=self.api_token,
-            extra_options=self.extra_options,
-            postprocessors=self.postprocessors,
-            registry=self.registry
-        )
 
 
         
