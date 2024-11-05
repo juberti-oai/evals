@@ -53,6 +53,7 @@ dependencies = [
     "peft",
     "librosa",
     "openai-whisper @ git+https://github.com/openai/whisper.git",
+    "replicate",
 ]
 
 [project.urls]

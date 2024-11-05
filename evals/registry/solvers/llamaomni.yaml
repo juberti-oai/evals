@@ -2,3 +2,12 @@ generation/gpu/llamaomni:
   class: evals.solvers.providers.llamaomni.llamaomni_local_gpu_solver:LlamaOmniLocalGPUSolver
   args:
     model_name: ICTNLP/Llama-3.1-8B-Omni
+
+
+generation/replicate/llamaomni:
+  class: evals.solvers.providers.llamaomni.llamaomni_replicate_solver:LlamaOmniReplicateSolver
+  args:
+    model_name: ictnlp/llama-omni
+    model_version: 36c9bcf70a56f40d9a27445c30c769308b18180296749f86ec9b682baf7ad351
+    generation_config: {}
+  

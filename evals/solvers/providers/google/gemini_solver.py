@@ -147,11 +147,12 @@ class GeminiSolver(Solver):
             else:
                 raise e
 
-        record_sampling(
-            prompt=msgs,
-            sampled=[solver_result.output],
-            model=self.model,
-        )
+        # record_sampling(
+        #     prompt=msgs,
+        #     sampled=[solver_result.output],
+        #     model=self.model,
+        # )
+        print("completion", solver_result.output)
         return solver_result
 
     @staticmethod
