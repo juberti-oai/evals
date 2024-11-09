@@ -224,6 +224,7 @@ def run(args: OaiEvalArguments, registry: Optional[Registry] = None) -> str:
         **extra_eval_params,
     )
     result = eval.run(recorder)
+    # Uncomment if you want to add token usage to the result
     # add_token_usage_to_result(result, recorder)
     recorder.record_final_report(result)
 

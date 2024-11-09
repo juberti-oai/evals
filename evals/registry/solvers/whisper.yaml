@@ -4,7 +4,7 @@
 # any solver that accepts text input.
 
 
-generation/whisper/fireworks-llama-31-70b: 
+generation/whisper/fireworks-llama-31-70b-instruct: 
   class: evals.solvers.providers.openai.whisper_solver:WhisperCascadedSolver
   args:
     solver:
@@ -17,7 +17,7 @@ generation/whisper/fireworks-llama-31-70b:
             temperature: 0
             max_tokens: 512
 
-generation/whisper/fireworks-llama-31-8b:
+generation/whisper/fireworks-llama-31-8b-instruct:
   class: evals.solvers.providers.openai.whisper_solver:WhisperCascadedSolver
   args:
     solver:

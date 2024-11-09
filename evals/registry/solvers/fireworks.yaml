@@ -1,3 +1,5 @@
+# Use your own Fireworks deployment for these solvers.
+
 generation/direct/llama-31-70b-instruct:
   class: evals.solvers.providers.fireworks.fireworks_solver:FireworksSolver
   args:
