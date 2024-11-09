@@ -1,9 +1,4 @@
-generation/gpu/llamaomni:
-  class: evals.solvers.providers.llamaomni.llamaomni_local_gpu_solver:LlamaOmniLocalGPUSolver
-  args:
-    model_name: ICTNLP/Llama-3.1-8B-Omni
-
-
+# You should use your own Replicate deployment for this solver.
 generation/replicate/llamaomni:
   class: evals.solvers.providers.llamaomni.llamaomni_replicate_solver:LlamaOmniReplicateSolver
   args:

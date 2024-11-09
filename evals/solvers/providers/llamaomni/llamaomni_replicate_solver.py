@@ -84,7 +84,6 @@ class LlamaOmniReplicateSolver(Solver):
             else:
                 result = str(prediction.output)
                 
-            print("output:", result)
             return SolverResult(result)
         
         return SolverResult("")
