@@ -52,7 +52,6 @@ dependencies = [
     "transformers[torch]",
     "peft",
     "librosa",
-    "openai-whisper",
     "replicate",
 ]
 
