@@ -129,7 +129,7 @@ class GeminiSolverWav(Solver):
                     "safety_settings": SAFETY_SETTINGS,
                 },
             )
-            print("Gen content resp:", gen_content_resp.text)
+            
             if gen_content_resp.prompt_feedback.block_reason:
                 # Blocked by safety filters
                 solver_result = SolverResult(
