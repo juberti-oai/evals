@@ -113,7 +113,6 @@ class Qwen2AudioLocalGPUSolver(Solver):
         
         # Submit to executor and get result
         completion_output = self.executor.submit(inputs).result()
-        print("completion_output: \n", completion_output, "\n\n")
         return SolverResult(completion_output)
 
     def __del__(self):
@@ -166,6 +165,7 @@ def solver_worker(inputs: List[Dict[str, Any]]) -> List[str]:
             add_generation_prompt=True,
             tokenize=False
         )
+        # Qwen2Audio translation prompt. We don't use this by default because it "cheats" by including the expected input language in the prompt.
         # text = "<|audio_bos|><|AUDIO|><|audio_eos|>"+input_item["conversation"][-1]["content"][-1]["text"]+"<|en|>"
         batch_text.append(text)
         batch_audios.extend(input_item["audios"])
