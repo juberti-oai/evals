@@ -7,7 +7,8 @@ import threading
 import time
 import traceback
 from concurrent import futures
-from typing import Callable, List, TypeVar, Union
+from concurrent.futures import ProcessPoolExecutor
+from typing import Callable, List, TypeVar
 
 from evals.api import CompletionFn, DummyCompletionFn
 from evals.completion_fns.openai import OpenAIChatCompletionFn, OpenAICompletionFn
@@ -88,7 +89,7 @@ class BatchedProcessPoolExecutor:
         self.batch_worker_fn = batch_worker_fn
         self._batch_queue = queue.Queue()
         self.available_workers = threading.Semaphore(value=max_workers + 1)
-        self.process_pool_executor = futures.process.ProcessPoolExecutor(
+        self.process_pool_executor = ProcessPoolExecutor(
             *args, max_workers=max_workers, **kwargs
         )
         self._batch_thread = threading.Thread(target=self.batch_requests)
