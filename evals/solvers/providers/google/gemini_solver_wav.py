@@ -65,6 +65,12 @@ class GeminiSolverWav(GeminiSolver):
         task_state: TaskState,
         **kwargs,
     ) -> SolverResult:
+        # Uncomment if you want to add a system message. 
+        # Gemini doesn't have a system role, so we will eventually convert this to a user message. 
+        # It seems to degrade performance on some models. 
+        # msgs = [
+        #     Message(role="system", content=task_state.task_description),
+        # ] + task_state.messages
         msgs = task_state.messages
         gmsgs = self._convert_msgs_to_google_format(msgs)
         try:
@@ -119,7 +125,14 @@ class GeminiSolverWav(GeminiSolver):
         """
         Convert messages to Gemini API format and process audio data.
         """
-        # Convert messages and combine consecutive messages from same role
+        """
+        Example msgs:
+        [Message(role='user', content='You are a helpful assistant.', 
+        tool_calls=None, tool_call_id=None), 
+        Message(role='user', 
+        content=[{'type': 'text', 'text': 'Please translate the text to English. Your response should only include the English translation, without any additional words:\n\n'}, 
+        {'type': 'audio_url', 'audio_url': {'url': 'data:audio/x-wav;base64,Ukl...'}}])
+        """
         std_msgs = []
         for msg in msgs:
             gmsg = GoogleMessage.from_evals_message(msg)
