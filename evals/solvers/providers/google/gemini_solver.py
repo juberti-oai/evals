@@ -147,11 +147,6 @@ class GeminiSolver(Solver):
             else:
                 raise e
 
-        record_sampling(
-            prompt=msgs,
-            sampled=[solver_result.output],
-            model=self.model,
-        )
         return solver_result
 
     @staticmethod
@@ -182,12 +177,6 @@ class GeminiSolver(Solver):
             else:
                 # Proceed as normal
                 std_msgs.append(msg)
-        for message in gmsgs: 
-            message_content_type = type(message["content"])
-            if message_content_type is list: 
-                for item in message["content"]:
-                    if item["type"] == "text":
-
 
         # Enforce last message is from the user
         assert std_msgs[-1].role == "user", "Last message must be from the user"

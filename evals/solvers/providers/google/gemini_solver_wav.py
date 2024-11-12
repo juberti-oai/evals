@@ -1,6 +1,5 @@
 import base64
 import copy
-import io
 import os
 from dataclasses import asdict, dataclass
 import re
@@ -9,41 +8,18 @@ from typing import Any, Dict, Union
 import google.api_core.exceptions
 import google.generativeai as genai
 from google.generativeai.client import get_default_generative_client
-import librosa
+
 import numpy as np
 
-from evals.record import record_sampling
 from evals.solvers.solver import Solver, SolverResult
 from evals.task_state import Message, TaskState
 from evals.utils.api_utils import create_retrying
 
+from evals.solvers.providers.google.gemini_solver import SAFETY_SETTINGS, GEMINI_RETRY_EXCEPTIONS, GeminiSolver
+
 # Load API key from environment variable
 API_KEY = os.environ.get("GEMINI_API_KEY")
 genai.configure(api_key=API_KEY)
-
-SAFETY_SETTINGS = [
-    {
-        "category": "HARM_CATEGORY_HARASSMENT",
-        "threshold": "BLOCK_NONE",
-    },
-    {
-        "category": "HARM_CATEGORY_HATE_SPEECH",
-        "threshold": "BLOCK_NONE",
-    },
-    {
-        "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-        "threshold": "BLOCK_NONE",
-    },
-    {
-        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-        "threshold": "BLOCK_NONE",
-    },
-]
-GEMINI_RETRY_EXCEPTIONS = (
-    google.api_core.exceptions.RetryError,
-    google.api_core.exceptions.TooManyRequests,
-    google.api_core.exceptions.ResourceExhausted,
-)
 
 def _data_url_to_wav(url):
     if not url.startswith("data:"):
@@ -79,36 +55,10 @@ class GoogleMessage:
     
     
 
-class GeminiSolverWav(Solver):
+class GeminiSolverWav(GeminiSolver):
     """
     A solver class that uses Google's Gemini API to generate responses.
     """
-
-    def __init__(
-        self,
-        model_name: str,
-        generation_config: Dict[str, Any] = {},
-        postprocessors: list[str] = [],
-        registry: Any = None,
-    ):
-        super().__init__(postprocessors=postprocessors)
-
-        self.model_name = model_name
-        self.gen_config = genai.GenerationConfig(**generation_config)
-
-        # We manually define the client. This is normally defined automatically when calling
-        # the API, but it isn't thread-safe, so we anticipate its creation here
-        self.glm_client = get_default_generative_client()
-
-    @property
-    def model(self) -> str:
-        return self.model_name
-    
-    # Remove timestamp from the message
-    # Seems like Gemini is trained on ASR data with timestamp XX:XX before the translation
-    def _post_process(self, message):
-        # Remove timestamps in format XX:XX (e.g., 00:00, 01:12)
-        return re.sub(r'\d{2}:\d{2}', '', message).strip()
 
     def _solve(
         self,
@@ -167,73 +117,35 @@ class GeminiSolverWav(Solver):
     @staticmethod
     def _convert_msgs_to_google_format(msgs: list[Message]) -> list[GoogleMessage]:
         """
-        Gemini API requires that the message list has
-        - Roles as 'user' or 'model'
-        - Alternating 'user' and 'model' messages
-        - Ends with a 'user' message
+        Convert messages to Gemini API format and process audio data.
         """
-        
-        # Enforce valid roles
-        gmsgs = []
+        # Convert messages and combine consecutive messages from same role
+        std_msgs = []
         for msg in msgs:
             gmsg = GoogleMessage.from_evals_message(msg)
-            gmsgs.append(gmsg)
             assert gmsg.role in {"user", "model"}, f"Invalid role: {gmsg.role}"
-        
-        # Enforce alternating messages
-        # e.g. [user1, user2, model1, user3] -> [user12, model1, user3]
-        std_msgs = []
-        for msg in gmsgs:
-            if len(std_msgs) > 0 and msg.role == std_msgs[-1].role:
-                # handle the case where msg.parts is a string or a dict. 
-                # The assumption is that std_msgs[-1].parts is a string
-                if isinstance(msg.parts[0], str):
-                    std_msgs[-1].parts = ["\n".join(std_msgs[-1].parts + msg.parts)]
-                elif isinstance(msg.parts[0], dict):
+            
+            if std_msgs and gmsg.role == std_msgs[-1].role:
+                # Combine text content
+                if isinstance(gmsg.parts[0], str):
+                    std_msgs[-1].parts = ["\n".join(std_msgs[-1].parts + gmsg.parts)]
+                # Combine text and preserve audio data
+                elif isinstance(gmsg.parts[0], dict):
                     std_msgs[-1].parts = [{
                         "type": "text",
-                        "text": std_msgs[-1].parts[0] + "\n" + msg.parts[0]["text"]
-                    }, {
-                        "type": "audio_url",
-                        "audio_url": msg.parts[1]["audio_url"]
-                    }]
-
+                        "text": std_msgs[-1].parts[0] + "\n" + gmsg.parts[0]["text"]
+                    }, gmsg.parts[1]]
             else:
-                # Proceed as normal
-                std_msgs.append(msg)
+                std_msgs.append(gmsg)
 
-        final_messages = []
-        std_msgs[-1].parts[1]["mime_type"] = "audio/wav"
-        wav_bytes = _data_url_to_wav(std_msgs[-1].parts[1]["audio_url"]["url"])
-        std_msgs[-1].parts[1]["data"] = wav_bytes
-        std_msgs[-1].parts[1].pop("audio_url")
-        std_msgs[-1].parts[1].pop("type")
-        final_messages = [
-            std_msgs[-1].parts[0]['text'], 
-            std_msgs[-1].parts[1]
-        ]
-        return final_messages 
-
-
-    @property
-    def name(self) -> str:
-        return self.model
-
-    @property
-    def model_version(self) -> Union[str, dict]:
-        return self.model
-
-    def __deepcopy__(self, memo):
-        """
-        Deepcopy everything except for self.glm_client, which is instead shared across all copies
-        """
-        cls = self.__class__
-        result = cls.__new__(cls)
-
-        memo[id(self)] = result
-        for k, v in self.__dict__.items():
-            if k != "glm_client":
-                setattr(result, k, copy.deepcopy(v, memo))
-
-        result.glm_client = self.glm_client
-        return result
+        # Process final audio message
+        last_msg = std_msgs[-1].parts
+        audio_part = last_msg[1]
+        
+        # Convert audio to wav format
+        wav_data = {
+            "mime_type": "audio/wav",
+            "data": _data_url_to_wav(audio_part["audio_url"]["url"])
+        }
+        
+        return [last_msg[0]['text'], wav_data]
