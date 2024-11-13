@@ -80,6 +80,8 @@ class FixieGPUSolver(Solver):
         if "max_new_tokens" not in extra_options:
             extra_options["max_new_tokens"] = 256
 
+        print("Using batch size: \n", max_batch_size)
+
         self.executor = BatchedProcessPoolExecutor(
             max_workers=max(1, num_gpus),
             max_batch_size=int(max_batch_size),

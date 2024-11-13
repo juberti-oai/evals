@@ -56,7 +56,7 @@ generation/gpu/ultravox-functionary-70b:
     extra_options:
       temperature: 0
       max_new_tokens: 256
-    max_batch_size: 8
+    max_batch_size: 4
 
 generation/gpu/ultravox-hermes-8b: 
   class: evals.solvers.providers.fixie.local_gpu_solver:FixieGPUSolver
@@ -73,7 +73,7 @@ generation/gpu/ultravox-hermes-70b:
     extra_options:
       temperature: 0
       max_new_tokens: 256
-    max_batch_size: 8
+    max_batch_size: 4
 
 generation/gpu/ultravox-toolace-8b:
   class: evals.solvers.providers.fixie.local_gpu_solver:FixieGPUSolver
