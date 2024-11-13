@@ -163,6 +163,8 @@ def solver_initializer(
         device = torch.device("cpu")
 
     global pipe, collator
+    import os
+    os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
 
 
     pipe = transformers.pipeline(
