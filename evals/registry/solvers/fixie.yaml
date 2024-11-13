@@ -48,6 +48,21 @@ generation/gpu/ultravox-functionary-70b:
       temperature: 0
       max_new_tokens: 512
 
+generation/gpu/ultravox-hermes-8b: 
+  class: evals.solvers.providers.fixie.local_gpu_solver:FixieGPUSolver
+  args:
+    model: fixie-ai/ultravox-v0_4_1-Hermes-3-Llama-3.1-8B
+    extra_options:
+      temperature: 0
+      max_new_tokens: 512
+
+generation/gpu/ultravox-hermes-70b: 
+  class: evals.solvers.providers.fixie.local_gpu_solver:FixieGPUSolver
+  args:
+    model: fixie-ai/ultravox-v0_4_1-Hermes-3-Llama-3.1-70B
+    extra_options:
+      temperature: 0
+      max_new_tokens: 512
 
 generation/gpu/ultravox-toolace-8b:
   class: evals.solvers.providers.fixie.local_gpu_solver:FixieGPUSolver
