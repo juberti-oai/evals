@@ -233,6 +233,11 @@ def run(args: OaiEvalArguments, registry: Optional[Registry] = None) -> str:
     logger.info("Final report:")
     for key, value in result.items():
         logger.info(f"{key}: {value}")
+
+    print("Final Report:")
+    for key, value in result.items():
+        print(f"{key}: {value}")
+
     return run_spec.run_id
 
 

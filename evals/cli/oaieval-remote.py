@@ -50,6 +50,8 @@ def get_parser() -> argparse.ArgumentParser:
                        help="Whether to show samples during evaluation")
     parser.add_argument("--user", type=str, default=os.getenv("USER", "unknown"),
                        help="User running the eval")
+    parser.add_argument("--log_to_file", type=str, default=None,
+                       help="Log to a file instead of stdout")
     return parser
 
 def create_image(commit_hash: Optional[str] = None) -> modal.Image:
