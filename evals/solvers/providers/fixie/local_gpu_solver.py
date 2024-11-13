@@ -10,6 +10,7 @@ from concurrent import futures
 from typing import Any, Callable, Dict, List, Optional, TypeVar
 
 import librosa
+import numpy as np
 import torch
 import torch.distributed
 import torch.multiprocessing as mp
@@ -160,17 +161,19 @@ def solver_initializer(
         device = torch.device("cpu")
 
     global pipe, collator
-    print(f"Initializing pipeline for model {model} on device {device}")
-    print(f"Extra options: {extra_options}")
+
+
     pipe = transformers.pipeline(
-        "feature-extraction",
+        "ultravox-pipeline",
         model=model,
         trust_remote_code=True,
         device=device,
         torch_dtype=torch.bfloat16,
         **extra_options,
     )
+
     pipe.tokenizer.padding_side = "left"
+    pipe.processor = transformers.AutoProcessor.from_pretrained(model)
 
     collator = DataCollatorForSeq2SeqWithAudio(tokenizer=pipe.tokenizer)
 
@@ -180,7 +183,7 @@ def solver_initializer(
             rank_queue.put(i)
 
 
-def solver_worker(inputs: Dict[str, Any]):
+def solver_worker(inputs: List[Dict[str, Any]]):
     prepped = [pipe.preprocess(item) for item in inputs]
     prepped = [
         {k: v.to(pipe.model.device).squeeze(0) for k, v in sample.items()} for sample in prepped
@@ -195,6 +198,7 @@ def solver_worker(inputs: Dict[str, Any]):
             terminators.append(pipe.tokenizer.convert_tokens_to_ids("<|eot_id|>"))
 
         input_len = batch["input_ids"].shape[1]
+        print("batch", batch)
 
         outputs = pipe.model.generate(
             **batch,

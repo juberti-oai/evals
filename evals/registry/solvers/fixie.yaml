@@ -40,6 +40,15 @@ generation/gpu/ultravox-v0_4_1-llama-3_1-70b:
       max_new_tokens: 512
 
 
+generation/gpu/ultravox-v0_4_1-llama-3_1-8b:
+  class: evals.solvers.providers.fixie.local_gpu_solver:FixieGPUSolver
+  args:
+    model: fixie-ai/ultravox-v0_4_1-llama-3_1-8b
+    extra_options:
+      temperature: 0
+      max_new_tokens: 512
+
+
 generation/gpu/ultravox-functionary-70b: 
   class: evals.solvers.providers.fixie.local_gpu_solver:FixieGPUSolver
   args: 
