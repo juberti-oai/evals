@@ -160,9 +160,10 @@ def solver_initializer(
         device = torch.device("cpu")
 
     global pipe, collator
-
+    print(f"Initializing pipeline for model {model} on device {device}")
+    print(f"Extra options: {extra_options}")
     pipe = transformers.pipeline(
-        "feature-extraction"
+        "feature-extraction",
         model=model,
         trust_remote_code=True,
         device=device,
@@ -203,5 +204,6 @@ def solver_worker(inputs: Dict[str, Any]):
         out_texts = [
             pipe.tokenizer.decode(o[input_len:], skip_special_tokens=True) for o in outputs
         ]
+        print(f"Generated outputs: {out_texts}")
         return out_texts
 

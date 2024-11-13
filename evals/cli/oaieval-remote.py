@@ -62,7 +62,7 @@ def create_image(commit_hash: Optional[str] = None) -> modal.Image:
 # Define the function with base image and environment variables
 @app.function(
     gpu=modal.gpu.H100(),
-    timeout=3600,
+    timeout=21600,
     container_idle_timeout=60,
     image=create_image(),
     secrets=secrets
