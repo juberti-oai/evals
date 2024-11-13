@@ -38,3 +38,12 @@ generation/gpu/ultravox-functionary-70b:
     extra_options:
       temperature: 0
       max_new_tokens: 512
+
+
+generation/gpu/ultravox-toolace-8b:
+  class: evals.solvers.providers.fixie.local_gpu_solver:FixieGPUSolver
+  args:
+    model: fixie-ai/ultravox-v0_4-ToolACE-8B
+    extra_options:
+      temperature: 0
+      max_new_tokens: 512
