@@ -65,9 +65,17 @@ def create_image(commit_hash: Optional[str] = None) -> modal.Image:
     timeout=21600,
     container_idle_timeout=60,
     image=create_image(),
-    secrets=secrets
+    secrets=secrets,
+    volumes={
+        "/root/.cache/huggingface": modal.Volume.from_name("hf-cache", create_if_missing=True)
+    }
 )
 def run_eval(args_dict: dict) -> None:
+    import os
+    import sys
+    print("Python path:", sys.path)
+    print("HF cache contents:", os.listdir("/root/.cache/huggingface"))
+    
     from evals.cli.oaieval import run, OaiEvalArguments
     
     # Remove Modal-specific args before passing to oaieval
