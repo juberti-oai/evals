@@ -11,9 +11,10 @@ import modal
 # Create a Modal app
 app = modal.App("oaieval-remote")
 
-# Create Modal secrets
+# Assumes you've set up this secret in Modal
 secrets = [
-    modal.Secret.from_name("openai-secret"),  # Assumes you've set up this secret in Modal
+    modal.Secret.from_name("openai-secret"),  
+    modal.Secret.from_name("huggingface-secret"),
 ]
 
 # Create a base image with evals and all its dependencies

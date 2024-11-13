@@ -162,6 +162,7 @@ def solver_initializer(
     global pipe, collator
 
     pipe = transformers.pipeline(
+        "feature-extraction"
         model=model,
         trust_remote_code=True,
         device=device,
