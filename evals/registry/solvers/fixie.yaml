@@ -28,7 +28,7 @@ generation/gpu/ultravox-dev:
     model: fixie-ai/ultravox-dev
     extra_options:
       temperature: 0
-      max_new_tokens: 512
+      max_new_tokens: 256
 
 
 generation/gpu/ultravox-v0_4_1-llama-3_1-70b: 
@@ -37,7 +37,7 @@ generation/gpu/ultravox-v0_4_1-llama-3_1-70b:
     model: fixie-ai/ultravox-v0_4_1-llama-3_1-70b
     extra_options:
       temperature: 0
-      max_new_tokens: 512
+      max_new_tokens: 256
 
 
 generation/gpu/ultravox-v0_4_1-llama-3_1-8b:
@@ -46,7 +46,7 @@ generation/gpu/ultravox-v0_4_1-llama-3_1-8b:
     model: fixie-ai/ultravox-v0_4_1-llama-3_1-8b
     extra_options:
       temperature: 0
-      max_new_tokens: 512
+      max_new_tokens: 256
 
 
 generation/gpu/ultravox-functionary-70b: 
@@ -55,7 +55,7 @@ generation/gpu/ultravox-functionary-70b:
     model: fixie-ai/ultravox-v0_4_1-llama-3_1-70b-functionary-medium-v3_1
     extra_options:
       temperature: 0
-      max_new_tokens: 512
+      max_new_tokens: 256
 
 generation/gpu/ultravox-hermes-8b: 
   class: evals.solvers.providers.fixie.local_gpu_solver:FixieGPUSolver
@@ -63,7 +63,7 @@ generation/gpu/ultravox-hermes-8b:
     model: fixie-ai/ultravox-v0_4_1-Hermes-3-Llama-3_1-8B
     extra_options:
       temperature: 0
-      max_new_tokens: 512
+      max_new_tokens: 256
 
 generation/gpu/ultravox-hermes-70b: 
   class: evals.solvers.providers.fixie.local_gpu_solver:FixieGPUSolver
@@ -71,7 +71,7 @@ generation/gpu/ultravox-hermes-70b:
     model: fixie-ai/ultravox-v0_4_1-Hermes-3-Llama-3_1-70B
     extra_options:
       temperature: 0
-      max_new_tokens: 512
+      max_new_tokens: 256
 
 generation/gpu/ultravox-toolace-8b:
   class: evals.solvers.providers.fixie.local_gpu_solver:FixieGPUSolver
@@ -79,5 +79,5 @@ generation/gpu/ultravox-toolace-8b:
     model: fixie-ai/ultravox-v0_4-ToolACE-8B
     extra_options:
       temperature: 0
-      max_new_tokens: 512
+      max_new_tokens: 256
 
