@@ -198,7 +198,6 @@ def solver_worker(inputs: List[Dict[str, Any]]):
             terminators.append(pipe.tokenizer.convert_tokens_to_ids("<|eot_id|>"))
 
         input_len = batch["input_ids"].shape[1]
-        print("batch", batch)
 
         outputs = pipe.model.generate(
             **batch,
