@@ -154,16 +154,31 @@ class DataCollatorForSeq2SeqWithAudio(transformers.DataCollatorForSeq2Seq):
 def solver_initializer(
     rank_queue: mp.Queue, world_size: int, model: str, extra_options: Dict[str, Any]
 ):
+    import os
+
     """Initializes the pipeline and the underlying model on the specified GPU."""
     rank = rank_queue.get()
 
+
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '12355'
+
+    if torch.cuda.is_available() and world_size > 1:
+        torch.distributed.init_process_group(
+            backend='nccl',
+            init_method='env://',  # Changed from tcp:// to env://
+            world_size=world_size,
+            rank=rank
+        )
+    
     if torch.cuda.is_available():
         device = torch.device("cuda", rank)
     else:
         device = torch.device("cpu")
 
     global pipe, collator
-
+    
+    # Move model creation after process group initialization
     pipe = transformers.pipeline(
         "ultravox-pipeline",
         model=model,
@@ -173,14 +188,21 @@ def solver_initializer(
         **extra_options,
     )
 
-    # Wrap the model in DataParallel if multiple GPUs are available
-    if torch.cuda.device_count() > 1:
-        pipe.model = torch.nn.DataParallel(pipe.model)
-    
+    # Only wrap in DDP if using multiple GPUs
+    if torch.cuda.is_available() and world_size > 1:
+        pipe.model = torch.nn.parallel.DistributedDataParallel(
+            pipe.model,
+            device_ids=[rank],
+            output_device=rank
+        )
+
     pipe.tokenizer.padding_side = "left"
     pipe.processor = transformers.AutoProcessor.from_pretrained(model)
 
     collator = DataCollatorForSeq2SeqWithAudio(tokenizer=pipe.tokenizer)
+
+    if torch.cuda.is_available() and world_size > 1:
+        torch.distributed.barrier()
 
     if rank == 0:
         # Let the other initializers start now that the download has finished
@@ -189,6 +211,7 @@ def solver_initializer(
 
 
 def solver_worker(inputs: List[Dict[str, Any]]):
+        
     prepped = [pipe.preprocess(item) for item in inputs]
     prepped = [
         {k: v.to(pipe.model.device).squeeze(0) for k, v in sample.items()} for sample in prepped
