@@ -33,8 +33,6 @@ def get_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("eval", type=str, help="Name of an eval. See registry.")
     parser.add_argument("--commit_hash", type=str, help="Git commit hash to use for the eval code")
-    parser.add_argument("--gpu", type=str, default="H100", help="GPU type to use (T4, A10G, A100, H100)")
-    parser.add_argument("--num_gpus", type=int, default=2, help="Number of GPUs to use")
     parser.add_argument(
         "--completion_args",
         type=str,
@@ -68,6 +66,7 @@ def create_image(commit_hash: Optional[str] = None) -> modal.Image:
     container_idle_timeout=60,
     image=create_image(),
     secrets=secrets,
+    gpu=modal.gpu.H100(count=4),
     volumes={
         "/root/.cache/huggingface": modal.Volume.from_name("hf-cache", create_if_missing=True)
     }
@@ -113,30 +112,18 @@ def main() -> None:
     parser = get_parser()
     args = parser.parse_args()
     
-    # Convert args to dictionary
     args_dict = vars(args)
-    
-    # Configure GPU based on argument
-    gpu_map = {
-        "T4": modal.gpu.T4(count=args.num_gpus),
-        "A10G": modal.gpu.A10G(count=args.num_gpus),
-        "A100": modal.gpu.A100(count=args.num_gpus),
-        "H100": modal.gpu.H100(count=args.num_gpus),
-    }
-    
-    # Create a new function with the correct GPU configuration
-    configured_run_eval = run_eval.with_options(gpu=gpu_map.get(args.gpu, modal.gpu.H100(count=args.num_gpus)))
     
     # Create image with specific commit
     if args.commit_hash:
-        configured_run_eval.image = create_image(args.commit_hash)
+        run_eval.image = create_image(args.commit_hash)
     
     # Run the function with output enabled
     with modal.enable_output():
         with app.run():
-            configured_run_eval.remote(args_dict)
+            run_eval.remote(args_dict)
 
 if __name__ == "__main__":
     main()
 
-#python -m evals.cli.oaieval-remote generation/gpu/functionary-medium transcript-translate-covost-en_de --commit_hash 8279021282deddc7d0629a83cd3a7747bd239647 --gpu A100
+#generation/gpu/ultravox-functionary-70b audio-translate-covost-en_de --commit_hash 755cb93b6e98abe4abef849b942fa34ac83a52af                        

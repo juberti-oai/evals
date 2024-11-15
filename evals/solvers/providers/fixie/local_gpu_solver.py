@@ -157,17 +157,26 @@ def solver_initializer(
     import os
 
     rank = rank_queue.get()
-
-    os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12355'
-
-    if torch.cuda.is_available() and world_size > 1:
-        torch.distributed.init_process_group(
-            backend='nccl',
-            init_method='env://',
-            world_size=world_size,
-            rank=rank
-        )
+    
+    # Only initialize distributed setup if we have multiple GPUs and CUDA is available
+    use_distributed = torch.cuda.is_available() and world_size > 1
+    
+    if use_distributed:
+        os.environ['MASTER_ADDR'] = 'localhost'
+        os.environ['MASTER_PORT'] = '12355'
+        
+        # Add timeout parameter and catch potential exceptions
+        try:
+            torch.distributed.init_process_group(
+                backend='nccl',
+                init_method='env://',
+                world_size=world_size,
+                rank=rank,
+                timeout=datetime.timedelta(minutes=1)  # Add reasonable timeout
+            )
+        except Exception as e:
+            logging.warning(f"Failed to initialize distributed process group: {e}")
+            use_distributed = False
     
     if torch.cuda.is_available():
         device = torch.device("cuda", rank)
@@ -176,10 +185,10 @@ def solver_initializer(
 
     global pipe, collator
     
-    # Configure tensor parallelism
+    # Only use tensor parallelism if distributed setup was successful
     config = transformers.AutoConfig.from_pretrained(
         model,
-        tensor_parallel_size=world_size,  # Enable tensor parallelism
+        tensor_parallel_size=world_size if use_distributed else 1,
         trust_remote_code=True
     )
     
@@ -198,8 +207,11 @@ def solver_initializer(
 
     collator = DataCollatorForSeq2SeqWithAudio(tokenizer=pipe.tokenizer)
 
-    if torch.cuda.is_available() and world_size > 1:
-        torch.distributed.barrier()
+    if use_distributed:
+        try:
+            torch.distributed.barrier()
+        except Exception as e:
+            logging.warning(f"Failed to synchronize at barrier: {e}")
 
     if rank == 0:
         for i in range(1, world_size):
