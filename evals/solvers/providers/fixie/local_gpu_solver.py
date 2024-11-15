@@ -156,9 +156,7 @@ def solver_initializer(
 ):
     import os
 
-    """Initializes the pipeline and the underlying model on the specified GPU."""
     rank = rank_queue.get()
-
 
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '12355'
@@ -166,7 +164,7 @@ def solver_initializer(
     if torch.cuda.is_available() and world_size > 1:
         torch.distributed.init_process_group(
             backend='nccl',
-            init_method='env://',  # Changed from tcp:// to env://
+            init_method='env://',
             world_size=world_size,
             rank=rank
         )
@@ -178,23 +176,22 @@ def solver_initializer(
 
     global pipe, collator
     
-    # Move model creation after process group initialization
+    # Configure tensor parallelism
+    config = transformers.AutoConfig.from_pretrained(
+        model,
+        tensor_parallel_size=world_size,  # Enable tensor parallelism
+        trust_remote_code=True
+    )
+    
     pipe = transformers.pipeline(
         "ultravox-pipeline",
         model=model,
+        config=config,
         trust_remote_code=True,
         device=device,
         torch_dtype=torch.bfloat16,
         **extra_options,
     )
-
-    # Only wrap in DDP if using multiple GPUs
-    if torch.cuda.is_available() and world_size > 1:
-        pipe.model = torch.nn.parallel.DistributedDataParallel(
-            pipe.model,
-            device_ids=[rank],
-            output_device=rank
-        )
 
     pipe.tokenizer.padding_side = "left"
     pipe.processor = transformers.AutoProcessor.from_pretrained(model)
@@ -205,16 +202,15 @@ def solver_initializer(
         torch.distributed.barrier()
 
     if rank == 0:
-        # Let the other initializers start now that the download has finished
         for i in range(1, world_size):
             rank_queue.put(i)
 
 
 def solver_worker(inputs: List[Dict[str, Any]]):
-        
     prepped = [pipe.preprocess(item) for item in inputs]
     prepped = [
-        {k: v.to(pipe.model.device).squeeze(0) for k, v in sample.items()} for sample in prepped
+        {k: v.to(pipe.model.device) for k, v in sample.items()} 
+        for sample in prepped
     ]
 
     batch = collator(prepped)
@@ -227,6 +223,7 @@ def solver_worker(inputs: List[Dict[str, Any]]):
 
         input_len = batch["input_ids"].shape[1]
 
+        # The model will automatically handle tensor parallelism during generation
         outputs = pipe.model.generate(
             **batch,
             eos_token_id=terminators,

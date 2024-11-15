@@ -64,7 +64,6 @@ def create_image(commit_hash: Optional[str] = None) -> modal.Image:
 
 # Define the function with base image and environment variables
 @app.function(
-    gpu=modal.gpu.H100(count=4),
     timeout=21600,
     container_idle_timeout=60,
     image=create_image(),
@@ -124,16 +123,18 @@ def main() -> None:
         "A100": modal.gpu.A100(count=args.num_gpus),
         "H100": modal.gpu.H100(count=args.num_gpus),
     }
-    run_eval.gpu = gpu_map.get(args.gpu, modal.gpu.H100(count=args.num_gpus))
+    
+    # Create a new function with the correct GPU configuration
+    configured_run_eval = run_eval.with_options(gpu=gpu_map.get(args.gpu, modal.gpu.H100(count=args.num_gpus)))
     
     # Create image with specific commit
     if args.commit_hash:
-        run_eval.image = create_image(args.commit_hash)
+        configured_run_eval.image = create_image(args.commit_hash)
     
     # Run the function with output enabled
     with modal.enable_output():
         with app.run():
-            run_eval.remote(args_dict)
+            configured_run_eval.remote(args_dict)
 
 if __name__ == "__main__":
     main()
