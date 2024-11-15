@@ -34,6 +34,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument("eval", type=str, help="Name of an eval. See registry.")
     parser.add_argument("--commit_hash", type=str, help="Git commit hash to use for the eval code")
     parser.add_argument("--gpu", type=str, default="H100", help="GPU type to use (T4, A10G, A100, H100)")
+    parser.add_argument("--num_gpus", type=int, default=2, help="Number of GPUs to use")
     parser.add_argument(
         "--completion_args",
         type=str,
@@ -63,7 +64,7 @@ def create_image(commit_hash: Optional[str] = None) -> modal.Image:
 
 # Define the function with base image and environment variables
 @app.function(
-    gpu=modal.gpu.H100(),
+    gpu=modal.gpu.H100(count=4),
     timeout=21600,
     container_idle_timeout=60,
     image=create_image(),
@@ -118,12 +119,12 @@ def main() -> None:
     
     # Configure GPU based on argument
     gpu_map = {
-        "T4": modal.gpu.T4(),
-        "A10G": modal.gpu.A10G(),
-        "A100": modal.gpu.A100(),
-        "H100": modal.gpu.H100(),
+        "T4": modal.gpu.T4(count=args.num_gpus),
+        "A10G": modal.gpu.A10G(count=args.num_gpus),
+        "A100": modal.gpu.A100(count=args.num_gpus),
+        "H100": modal.gpu.H100(count=args.num_gpus),
     }
-    run_eval.gpu = gpu_map.get(args.gpu, modal.gpu.H100())
+    run_eval.gpu = gpu_map.get(args.gpu, modal.gpu.H100(count=args.num_gpus))
     
     # Create image with specific commit
     if args.commit_hash:

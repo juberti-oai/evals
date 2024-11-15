@@ -163,9 +163,6 @@ def solver_initializer(
         device = torch.device("cpu")
 
     global pipe, collator
-    import os
-    os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
-
 
     pipe = transformers.pipeline(
         "ultravox-pipeline",
@@ -176,6 +173,10 @@ def solver_initializer(
         **extra_options,
     )
 
+    # Wrap the model in DataParallel if multiple GPUs are available
+    if torch.cuda.device_count() > 1:
+        pipe.model = torch.nn.DataParallel(pipe.model)
+    
     pipe.tokenizer.padding_side = "left"
     pipe.processor = transformers.AutoProcessor.from_pretrained(model)
 
