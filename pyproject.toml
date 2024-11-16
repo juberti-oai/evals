@@ -52,6 +52,8 @@ dependencies = [
     "transformers[torch]",
     "peft",
     "librosa",
+    "py-cpuinfo",
+    "deepspeed"
 ]
 
 [project.urls]

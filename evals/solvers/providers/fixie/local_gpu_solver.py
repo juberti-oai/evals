@@ -155,6 +155,7 @@ def solver_initializer(
     rank_queue: mp.Queue, world_size: int, model: str, extra_options: Dict[str, Any]
 ):
     import os
+    import deepspeed
 
     rank = rank_queue.get()
     
@@ -185,11 +186,47 @@ def solver_initializer(
 
     global pipe, collator
     
-    # Only use tensor parallelism if distributed setup was successful
+    # Configure DeepSpeed ZeRO inference
+    ds_config = {
+        "fp16": {
+            "enabled": True
+        },
+        "zero_optimization": {
+            "stage": 3,
+            "offload_optimizer": {
+                "device": "cpu",
+                "pin_memory": True
+            },
+            "offload_param": {
+                "device": "cpu",
+                "pin_memory": True
+            }
+        },
+        "train_batch_size": 1,
+        "train_micro_batch_size_per_gpu": 1
+    }
+    
     config = transformers.AutoConfig.from_pretrained(
         model,
         tensor_parallel_size=world_size if use_distributed else 1,
         trust_remote_code=True
+    )
+    
+    # Initialize model with DeepSpeed
+    model = transformers.AutoModelForCausalLM.from_pretrained(
+        model,
+        config=config,
+        torch_dtype=torch.bfloat16,
+        trust_remote_code=True,
+    )
+    
+    # Initialize DeepSpeed-Inference engine
+    model = deepspeed.init_inference(
+        model,
+        mp_size=world_size if use_distributed else 1,
+        dtype=torch.bfloat16,
+        replace_with_kernel_inject=True,
+        **ds_config
     )
     
     pipe = transformers.pipeline(
