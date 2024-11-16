@@ -58,7 +58,7 @@ def create_image(commit_hash: Optional[str] = None) -> modal.Image:
         return evals_base_image
     
     # Allow new dependencies to be installed with the commit
-    return evals_base_image.pip_install(f"git+https://github.com/fixie-ai/evals.git@{commit_hash}")
+    return evals_base_image.pip_install(f"git+https://github.com/fixie-ai/evals.git@{commit_hash}", "accelerate")
 
 # Define the function with base image and environment variables
 @app.function(

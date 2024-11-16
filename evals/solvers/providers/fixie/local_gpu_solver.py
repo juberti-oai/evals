@@ -16,6 +16,7 @@ import torch.distributed
 import torch.multiprocessing as mp
 import torch.nn.functional as F
 import transformers
+from accelerate import init_empty_weights, load_checkpoint_and_dispatch
 
 from evals.solvers.solver import Solver, SolverResult
 from evals.solvers.utils import BatchedProcessPoolExecutor
@@ -155,86 +156,56 @@ def solver_initializer(
     rank_queue: mp.Queue, world_size: int, model: str, extra_options: Dict[str, Any]
 ):
     import os
-    import deepspeed
-
+    import logging
+    
     rank = rank_queue.get()
     
-    # Only initialize distributed setup if we have multiple GPUs and CUDA is available
-    use_distributed = torch.cuda.is_available() and world_size > 1
-    
+    # Only initialize distributed setup if we have multiple GPUs
+    use_distributed = world_size > 1
     if use_distributed:
         os.environ['MASTER_ADDR'] = 'localhost'
         os.environ['MASTER_PORT'] = '12355'
         
-        # Add timeout parameter and catch potential exceptions
         try:
             torch.distributed.init_process_group(
                 backend='nccl',
                 init_method='env://',
                 world_size=world_size,
                 rank=rank,
-                timeout=datetime.timedelta(minutes=1)  # Add reasonable timeout
+                timeout=datetime.timedelta(minutes=1)
             )
         except Exception as e:
             logging.warning(f"Failed to initialize distributed process group: {e}")
             use_distributed = False
-    
-    if torch.cuda.is_available():
-        device = torch.device("cuda", rank)
-    else:
-        device = torch.device("cpu")
 
     global pipe, collator
-    
-    # Configure DeepSpeed ZeRO inference
-    ds_config = {
-        "fp16": {
-            "enabled": True
-        },
-        "zero_optimization": {
-            "stage": 3,
-            "offload_optimizer": {
-                "device": "cpu",
-                "pin_memory": True
-            },
-            "offload_param": {
-                "device": "cpu",
-                "pin_memory": True
-            }
-        },
-        "train_batch_size": 1,
-        "train_micro_batch_size_per_gpu": 1
-    }
-    
+
     config = transformers.AutoConfig.from_pretrained(
         model,
-        tensor_parallel_size=world_size if use_distributed else 1,
         trust_remote_code=True
     )
     
-    # Initialize model with DeepSpeed
-    model = transformers.AutoModelForCausalLM.from_pretrained(
-        model,
-        config=config,
-        torch_dtype=torch.bfloat16,
-        trust_remote_code=True,
-    )
+    # Initialize model with Accelerate for efficient multi-GPU inference
+    with init_empty_weights():
+        model = transformers.AutoModelForCausalLM.from_config(
+            config,
+            trust_remote_code=True,
+        )
     
-    # Initialize DeepSpeed-Inference engine
-    model = deepspeed.init_inference(
+    # Load and dispatch model across available GPUs
+    model = load_checkpoint_and_dispatch(
         model,
-        mp_size=world_size if use_distributed else 1,
+        model,
+        device_map="auto",
         dtype=torch.bfloat16,
-        replace_with_kernel_inject=True,
-        **ds_config
+        no_split_module_classes=["GPTBigCodeBlock", "LlamaDecoderLayer"]  # Adjust based on your model
     )
-    
+
     pipe = transformers.pipeline(
         "ultravox-pipeline",
         model=model,
         config=config,
         trust_remote_code=True,
-        device=device,
         torch_dtype=torch.bfloat16,
         **extra_options,
     )
