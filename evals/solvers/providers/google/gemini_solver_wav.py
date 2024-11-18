@@ -1,9 +1,5 @@
-import base64
-import copy
 import os
 from dataclasses import asdict, dataclass
-import re
-from typing import Any, Dict, Union
 
 import google.api_core.exceptions
 import google.generativeai as genai
@@ -12,6 +8,7 @@ from google.generativeai.client import get_default_generative_client
 import numpy as np
 
 from evals.solvers.solver import Solver, SolverResult
+from evals.solvers.utils import _data_url_to_wav
 from evals.task_state import Message, TaskState
 from evals.utils.api_utils import create_retrying
 
@@ -20,13 +17,6 @@ from evals.solvers.providers.google.gemini_solver import SAFETY_SETTINGS, GEMINI
 # Load API key from environment variable
 API_KEY = os.environ.get("GEMINI_API_KEY")
 genai.configure(api_key=API_KEY)
-
-def _data_url_to_wav(url):
-    if not url.startswith("data:"):
-        raise ValueError("Not a data URL")
-    _, raw_data = url.split(",", 1)
-    return base64.b64decode(raw_data)
-
 
 # TODO: Could we just use google's own types?
 # e.g. google.generativeai.types.content_types.ContentType
@@ -124,8 +114,7 @@ class GeminiSolverWav(GeminiSolver):
     def _convert_msgs_to_google_format(msgs: list[Message]) -> list[GoogleMessage]:
         """
         Convert messages to Gemini API format and process audio data.
-        """
-        """
+
         Example msgs:
         [Message(role='user', content='You are a helpful assistant.', 
         tool_calls=None, tool_call_id=None), 
@@ -133,6 +122,8 @@ class GeminiSolverWav(GeminiSolver):
         content=[{'type': 'text', 'text': 'Please translate the text to English. Your response should only include the English translation, without any additional words:\n\n'}, 
         {'type': 'audio_url', 'audio_url': {'url': 'data:audio/x-wav;base64,Ukl...'}}])
         """
+        #TODO: Add multi turn support
+
         std_msgs = []
         for msg in msgs:
             gmsg = GoogleMessage.from_evals_message(msg)
@@ -160,5 +151,5 @@ class GeminiSolverWav(GeminiSolver):
             "mime_type": "audio/wav",
             "data": _data_url_to_wav(audio_part["audio_url"]["url"])
         }
-        
+
         return [last_msg[0]['text'], wav_data]

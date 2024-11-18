@@ -1,3 +1,4 @@
+import base64
 from typing import Union
 
 from evals.api import CompletionFn, DummyCompletionFn
@@ -53,3 +54,10 @@ def maybe_wrap_with_solver(ambiguous_executor: Union[Solver, CompletionFn]) -> S
         else:
             raise ValueError(f"Unsupported completion_fn type: {type(ambiguous_executor)}")
     return solver
+
+
+def _data_url_to_wav(url):
+    if not url.startswith("data:"):
+        raise ValueError("Not a data URL")
+    _, raw_data = url.split(",", 1)
+    return base64.b64decode(raw_data)
