@@ -114,15 +114,29 @@ class GeminiSolverWav(GeminiSolver):
     def _convert_msgs_to_google_format(msgs: list[Message]) -> list[GoogleMessage]:
         """
         Convert messages to Gemini API format and process audio data.
+        Currently only supports a single audio message at the end of the conversation.
+
+        Args:
+            msgs: List of Message objects. The last message must contain audio data.
+
+        Raises:
+            AssertionError: If messages after audio are found or if audio format is invalid.
 
         Example msgs:
-        [Message(role='user', content='You are a helpful assistant.', 
-        tool_calls=None, tool_call_id=None), 
-        Message(role='user', 
-        content=[{'type': 'text', 'text': 'Please translate the text to English. Your response should only include the English translation, without any additional words:\n\n'}, 
-        {'type': 'audio_url', 'audio_url': {'url': 'data:audio/x-wav;base64,Ukl...'}}])
+        [Message(role='user', content='You are a helpful assistant.'), 
+         Message(role='user', 
+                 content=[{'type': 'text', 'text': 'Please translate...'}, 
+                         {'type': 'audio_url', 'audio_url': {'url': 'data:audio/x-wav;base64,...'}}])]
         """
-        #TODO: Add multi turn support
+        # Add validation for audio message placement
+        assert len(msgs) >= 1, "Must provide at least one message"
+        last_msg_content = msgs[-1].content
+        assert isinstance(last_msg_content, list) and len(last_msg_content) == 2, (
+            "Last message must contain exactly two parts: text and audio"
+        )
+        assert last_msg_content[1].get('type') == 'audio_url', (
+            "Last message must contain audio data"
+        )
 
         std_msgs = []
         for msg in msgs:
