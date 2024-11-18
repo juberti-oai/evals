@@ -21,7 +21,7 @@ secrets = [
 evals_base_image = (
     modal.Image.debian_slim(python_version="3.12.2")
     .apt_install("git")
-    .pip_install("git+https://github.com/fixie-ai/evals.git")
+    .pip_install("git+https://github.com/fixie-ai/evals.git", "accelerate")
 )
 
 def get_parser() -> argparse.ArgumentParser:
