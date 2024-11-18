@@ -73,6 +73,7 @@ class Qwen2AudioLocalGPUSolver(Solver):
         text_parts = []
         
         for i, part in enumerate(content):
+            print(part)
             if part["type"] == "audio_url":
                 if isinstance(part["audio_url"], dict) and "url" in part["audio_url"]:
                     audio_data = part["audio_url"]["url"].split(",")[1]
@@ -96,7 +97,7 @@ class Qwen2AudioLocalGPUSolver(Solver):
                 }
                 text_parts.append(text_part)
         
-        return audios, list(reversed(text_parts))
+        return audios, text_parts
 
     def _solve(self, task_state: TaskState, **kwargs) -> SolverResult:
         inputs = {"conversation": [], "audios": []}

@@ -8,6 +8,7 @@ import time
 import traceback
 from concurrent import futures
 from typing import Any, Callable, Dict, List, Optional, TypeVar
+from urllib.request import urlopen
 
 import librosa
 import torch
@@ -105,9 +106,13 @@ class FixieGPUSolver(Solver):
             msgs[-1]["content"] = "".join(parts_str)
             data_parts = [x["audio_url"] for x in parts if x["type"] == "audio_url"]
             assert len(data_parts) == 1
-            # Extract the audio data from the last message
-            audio_data = data_parts[0]["url"].split(",")[1]
-            audio_stream = io.BytesIO(base64.b64decode(audio_data))
+            
+            # Handle both base64 and URL audio formats
+            if isinstance(data_parts[0], dict) and "url" in data_parts[0]:
+                audio_data = data_parts[0]["url"].split(",")[1]
+                audio_stream = io.BytesIO(base64.b64decode(audio_data))
+            else:
+                audio_stream = io.BytesIO(urlopen(data_parts[0]).read())
 
             # Read the audio data using soundfile and enforce the expected sample rate
             inputs["audio"] = librosa.load(audio_stream, sr=SAMPLE_RATE)[0]
