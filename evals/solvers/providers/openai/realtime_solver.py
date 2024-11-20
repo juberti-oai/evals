@@ -10,7 +10,7 @@ import numpy as np
 import websockets
 
 from evals.solvers.solver import Solver, SolverResult
-from evals.solvers.utils import _data_url_to_wav
+from evals.solvers.utils import data_url_to_wav
 from evals.task_state import TaskState
 
 
@@ -102,7 +102,7 @@ class RealtimeSolver(Solver):
                         if item["type"] == "text":
                             content.append({"type": "input_text", "text": item["text"]})
                         elif item["type"] == "audio_url":
-                            wav_bytes = _data_url_to_wav(item["audio_url"]["url"])
+                            wav_bytes = data_url_to_wav(item["audio_url"]["url"])
                             pcm_bytes = _wav_to_24k_pcm(wav_bytes)
                             base64_pcm = _pcm_to_base64(pcm_bytes)
                             content.append({"type": "input_audio", "audio": base64_pcm})

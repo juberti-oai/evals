@@ -8,7 +8,7 @@ from google.generativeai.client import get_default_generative_client
 import numpy as np
 
 from evals.solvers.solver import Solver, SolverResult
-from evals.solvers.utils import _data_url_to_wav
+from evals.solvers.utils import data_url_to_wav
 from evals.task_state import Message, TaskState
 from evals.utils.api_utils import create_retrying
 
@@ -163,7 +163,7 @@ class GeminiSolverWav(GeminiSolver):
         # Convert audio to wav format
         wav_data = {
             "mime_type": "audio/wav",
-            "data": _data_url_to_wav(audio_part["audio_url"]["url"])
+            "data": data_url_to_wav(audio_part["audio_url"]["url"])
         }
 
         return [last_msg[0]['text'], wav_data]
