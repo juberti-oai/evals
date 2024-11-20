@@ -1,3 +1,4 @@
+import base64
 from typing import Union
 import dataclasses
 import logging
@@ -65,7 +66,11 @@ def maybe_wrap_with_solver(ambiguous_executor: Union[Solver, CompletionFn]) -> S
     return solver
 
 
-
+def data_url_to_wav(url):
+    if not url.startswith("data:"):
+        raise ValueError("Not a data URL")
+    _, raw_data = url.split(",", 1)
+    return base64.b64decode(raw_data)
 
 
 T_In = TypeVar("T_In")
