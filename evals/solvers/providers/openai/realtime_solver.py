@@ -5,6 +5,7 @@ import json
 import os
 from typing import Any, Dict, Optional, Union
 
+import audioop
 import librosa
 import numpy as np
 import websockets
@@ -14,13 +15,16 @@ from evals.solvers.utils import data_url_to_wav
 from evals.task_state import TaskState
 
 
-def _wav_to_24k_pcm(wav_bytes):
-    audio, sr = librosa.load(io.BytesIO(wav_bytes), sr=24000, mono=True)
+def _wav_to_pcm(wav_bytes, sample_rate):
+    audio, _ = librosa.load(io.BytesIO(wav_bytes), sr=sample_rate, mono=True)
     return (audio * 32767).astype(np.int16).tobytes()
 
+def _wav_to_ulaw(wav_bytes):
+    audio_bytes = _wav_to_pcm(wav_bytes, sample_rate=8000)
+    return audioop.lin2ulaw(audio_bytes, 2)
 
-def _pcm_to_base64(pcm_bytes):
-    return base64.b64encode(pcm_bytes).decode("utf-8")
+def _bytes_to_base64(bytes_data):
+    return base64.b64encode(bytes_data).decode("utf-8")
 
 
 class RealtimeSolver(Solver):
@@ -83,7 +87,16 @@ class RealtimeSolver(Solver):
         # anytime we have audio content.
         url = f"{self._api_base}?model={self.model}"
         headers = {"Authorization": f"Bearer {self._api_key}", "OpenAI-Beta": "realtime=v1"}
-        async with websockets.connect(url, extra_headers=headers) as websocket:
+        input_audio_format = self.completion_fn_options.get("input_audio_format")
+        async with websockets.connect(url, additional_headers=headers) as websocket:
+            if input_audio_format:
+                event = {
+                    "type": "session.update",
+                    "session": {
+                        "input_audio_format": input_audio_format,
+                    },
+                }
+                await websocket.send(json.dumps(event))
             system_message = None
             modalities = set(["text"])
             for message in messages:
@@ -103,9 +116,12 @@ class RealtimeSolver(Solver):
                             content.append({"type": "input_text", "text": item["text"]})
                         elif item["type"] == "audio_url":
                             wav_bytes = data_url_to_wav(item["audio_url"]["url"])
-                            pcm_bytes = _wav_to_24k_pcm(wav_bytes)
-                            base64_pcm = _pcm_to_base64(pcm_bytes)
-                            content.append({"type": "input_audio", "audio": base64_pcm})
+                            if input_audio_format == "g711_ulaw":
+                                audio_bytes = _wav_to_ulaw(wav_bytes)
+                            else:
+                                audio_bytes = _wav_to_pcm(wav_bytes, sample_rate=24000)
+                            base64_audio = _bytes_to_base64(audio_bytes)
+                            content.append({"type": "input_audio", "audio": base64_audio})
                             modalities.add("audio")
                 event = {
                     "type": "conversation.item.create",
