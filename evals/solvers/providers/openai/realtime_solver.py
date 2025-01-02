@@ -72,70 +72,50 @@ class RealtimeSolver(Solver):
         raw_msgs = [
             {"role": "system", "content": task_state.task_description},
         ] + [msg.to_dict() for msg in task_state.messages]
-        completion_result = asyncio.run(self._ws_completion(raw_msgs))
-        completion_content = completion_result["output"][0]["content"]
+        completion_result = asyncio.run(self._ws_completion_with_retry(raw_msgs))
+        completion_output = completion_result["output"]
+        completion_content = completion_output[0]["content"]
         completion_item = completion_content[0]
         # When the model yields text output, the text portion is contained in "text";
         # when the model yields audio output, the text portion is contained in "transcript".
         completion_output = completion_item.get("text") or completion_item.get("transcript")
         solver_result = SolverResult(completion_output, raw_completion_result=completion_result)
         return solver_result
+    
+    async def _ws_completion_with_retry(self, messages):
+        for i in range(3):
+            try:
+                return await self._ws_completion(messages)            
+            except websockets.exceptions.InvalidStatus as e:
+                print(f"Retrying after InvalidStatus: {e}")
+            except NotImplementedError:
+                print(f"Retrying after NotImplementedError: {e}")
+            await asyncio.sleep(1)
+                                    
+        raise e
 
     async def _ws_completion(self, messages):
-        # When supplying audio input, the API will hang unless you ask for audio output,
-        # even if you don't plan to use the audio output. So we ask for audio output
-        # anytime we have audio content.
         url = f"{self._api_base}?model={self.model}"
-        headers = {"Authorization": f"Bearer {self._api_key}", "OpenAI-Beta": "realtime=v1"}
-        input_audio_format = self.completion_fn_options.get("input_audio_format")
+        headers = {"Authorization": f"Bearer {self._api_key}", "OpenAI-Beta": "realtime=v1"} 
+        input_audio_format = self.completion_fn_options.get("input_audio_format", "pcm16")     
         async with websockets.connect(url, additional_headers=headers) as websocket:
-            if input_audio_format:
-                event = {
-                    "type": "session.update",
-                    "session": {
-                        "input_audio_format": input_audio_format,
-                    },
-                }
-                await websocket.send(json.dumps(event))
-            system_message = None
-            modalities = set(["text"])
             for message in messages:
                 message_content_type = type(message["content"])
-                role = message["role"]
-                content = []
+                role = message["role"]                
                 if message_content_type is str:
                     text = message["content"]
                     if role == "system":
-                        system_message = text
+                        await self._send_session_update(websocket, text, input_audio_format)                       
                     else:
-                        content.append({"type": "input_text", "text": text})
-                        continue
+                        await self._send_conversation_item_create(websocket, role, text) 
+                    continue
                 elif message_content_type is list:
                     for item in message["content"]:
                         if item["type"] == "text":
-                            content.append({"type": "input_text", "text": item["text"]})
+                            await self._send_conversation_item_create(websocket, message["role"], item["text"])
                         elif item["type"] == "audio_url":
-                            wav_bytes = data_url_to_wav(item["audio_url"]["url"])
-                            if input_audio_format == "g711_ulaw":
-                                audio_bytes = _wav_to_ulaw(wav_bytes)
-                            else:
-                                audio_bytes = _wav_to_pcm(wav_bytes, sample_rate=24000)
-                            base64_audio = _bytes_to_base64(audio_bytes)
-                            content.append({"type": "input_audio", "audio": base64_audio})
-                            modalities.add("audio")
-                event = {
-                    "type": "conversation.item.create",
-                    "item": {"type": "message", "role": role, "content": content},
-                }
-                await websocket.send(json.dumps(event))
-            create_response = {
-                "type": "response.create",
-                "response": {
-                    "instructions": system_message,
-                    "modalities": list(modalities),
-                },
-            }
-            await websocket.send(json.dumps(create_response))
+                            await self._send_input_audio(websocket, input_audio_format, data_url_to_wav(item["audio_url"]["url"]))                         
+            await self._send_response_create(websocket, ["text"])            
             while True:
                 response_json = await websocket.recv()
                 response = json.loads(response_json)
@@ -143,3 +123,45 @@ class RealtimeSolver(Solver):
                     break
 
         return response["response"]
+    
+    async def _send_session_update(self, websocket, instructions, input_audio_format):
+        event = {
+            "type": "session.update",
+            "session": {"instructions": instructions, "input_audio_format": input_audio_format, "turn_detection": None},
+        }
+        await websocket.send(json.dumps(event))
+
+    async def _send_conversation_item_create(self, websocket, role, text):
+        event = {
+            "type": "conversation.item.create",
+            "item": {"type": "message", "role": role, "content": [{"type": "input_text", "text": text}]},
+        }
+        await websocket.send(json.dumps(event))
+
+    async def _send_input_audio(self, websocket, format, wav_bytes):
+        if format == "g711_ulaw":
+            audio_bytes = _wav_to_ulaw(wav_bytes)
+        else:
+            audio_bytes = _wav_to_pcm(wav_bytes, sample_rate=24000)
+        total_bytes = len(audio_bytes)
+        chunk_size = self.completion_fn_options.get("chunk_size", total_bytes)
+        for i in range(0, total_bytes, chunk_size):
+            chunk = audio_bytes[i:i+chunk_size]
+            event = {
+                "type": "input_audio_buffer.append",
+                "audio": _bytes_to_base64(chunk),
+            }
+            await websocket.send(json.dumps(event))
+        event = {
+            "type": "input_audio_buffer.commit",
+        }
+        await websocket.send(json.dumps(event))
+
+    async def _send_response_create(self, websocket, modalities):
+        event = {
+            "type": "response.create",
+            "response": {"modalities": modalities},
+        }
+        await websocket.send(json.dumps(event))
+    
+    

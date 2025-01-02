@@ -9,11 +9,11 @@ generation/realtime/gpt-4o-realtime:
         temperature: 1
         max_tokens: 512
 
-generation/realtime/gpt-4o-realtime-mini:
+generation/realtime/gpt-4o-mini-realtime:
   class: evals.solvers.providers.openai.realtime_solver:RealtimeSolver
   args:
     completion_fn_options:
-      model: gpt-4o-realtime-preview-mini
+      model: gpt-4o-mini-realtime-preview
       extra_options:
         temperature: 1
         max_tokens: 512
@@ -29,14 +29,35 @@ generation/realtime/gpt-4o-realtime-ulaw:
         temperature: 1
         max_tokens: 512
 
-
-generation/realtime/gpt-4o-realtime-mini-ulaw:
+generation/realtime/gpt-4o-realtime-ulaw-160:
   class: evals.solvers.providers.openai.realtime_solver:RealtimeSolver
   args:
     completion_fn_options:
-      model: gpt-4o-realtime-preview-mini
+      model: gpt-4o-realtime-preview
+      input_audio_format: g711_ulaw
+      chunk_size: 160
+      extra_options:
+        temperature: 1
+        max_tokens: 512
+  
+
+generation/realtime/gpt-4o-mini-realtime-ulaw:
+  class: evals.solvers.providers.openai.realtime_solver:RealtimeSolver
+  args:
+    completion_fn_options:
+      model: gpt-4o-mini-realtime-preview
       input_audio_format: g711_ulaw
       extra_options:
         temperature: 1
         max_tokens: 512
       
+generation/realtime/gpt-4o-mini-realtime-ulaw-160:
+  class: evals.solvers.providers.openai.realtime_solver:RealtimeSolver
+  args:
+    completion_fn_options:
+      model: gpt-4o-mini-realtime-preview
+      input_audio_format: g711_ulaw
+      chunk_size: 160
+      extra_options:
+        temperature: 1
+        max_tokens: 512
