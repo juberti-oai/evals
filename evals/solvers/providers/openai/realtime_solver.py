@@ -88,8 +88,10 @@ class RealtimeSolver(Solver):
                 return await self._ws_completion(messages)            
             except websockets.exceptions.InvalidStatus as e:
                 print(f"Retrying after InvalidStatus: {e}")
-            except NotImplementedError:
+            except NotImplementedError as e:
                 print(f"Retrying after NotImplementedError: {e}")
+            except Exception as e:
+                print(f"Retrying after Exception: {e}, type: {type(e)}")
             await asyncio.sleep(1)
                                     
         raise e
